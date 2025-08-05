@@ -1,0 +1,20 @@
+Terminal 1: levantar el backend
+
+cd C:\Users\TuUsuario\Desktop\react\backend
+npm install        # solo la primera vez
+npm run init-db    # solo la primera vez
+npm start
+direcion de  servidor local http://localhost:3001
+
+
+
+
+Terminal 2: levantar el frontend
+
+cd C:\Users\TuUsuario\Desktop\react\frontend
+npm install        # solo la primera vez
+npm start
+Debería abrirse automáticamente en el navegador en:
+
+
+http://localhost:3000
