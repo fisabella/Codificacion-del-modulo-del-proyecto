@@ -12,21 +12,7 @@ app.use(express.json());
 
 const db = new sqlite3.Database('data.db');
 
-app.post('/login', (req, res) => {
-  const { usuario, contrasena } = req.body;
-  db.get(`SELECT * FROM usuarios WHERE usuario = ? AND contrasena = ?`,
-    [usuario, contrasena],
-    (err, row) => {
-      if (err) return res.status(500).json({ error: 'Error interno' });
-      if (row) {
-        const token = jwt.sign({ usuario }, SECRET, { expiresIn: '1h' });
-        res.json({ success: true, token });
-      } else {
-        res.json({ success: false });
-      }
-    });
-});
-
+// Middleware de autenticación
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth) return res.status(401).json({ error: 'No autorizado' });
@@ -40,12 +26,32 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// Login
+app.post('/login', (req, res) => {
+  const { usuario, contrasena } = req.body;
+  db.get(
+    `SELECT * FROM usuarios WHERE usuario = ? AND contrasena = ?`,
+    [usuario, contrasena],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: 'Error interno' });
+      if (row) {
+        const token = jwt.sign({ usuario }, SECRET, { expiresIn: '1h' });
+        res.json({ success: true, token });
+      } else {
+        res.json({ success: false });
+      }
+    }
+  );
+});
+
+// Ruta protegida (opcional)
 app.get('/dashboard', authMiddleware, (req, res) => {
   const token = req.headers.authorization.split(' ')[1];
   const decoded = jwt.verify(token, SECRET);
   res.json({ mensaje: `Bienvenido ${decoded.usuario}` });
 });
 
+// Crear paciente
 app.post('/pacientes', authMiddleware, (req, res) => {
   const { nombre, cedula, telefono, medico, especialidad, numero_orden } = req.body;
   db.run(
@@ -59,6 +65,7 @@ app.post('/pacientes', authMiddleware, (req, res) => {
   );
 });
 
+// Leer pacientes
 app.get('/pacientes', authMiddleware, (req, res) => {
   db.all(`SELECT * FROM pacientes`, [], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Error al obtener pacientes' });
@@ -66,4 +73,30 @@ app.get('/pacientes', authMiddleware, (req, res) => {
   });
 });
 
+// 🔄 Actualizar paciente
+app.put('/pacientes/:id', authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const { nombre, cedula, telefono, medico, especialidad, numero_orden } = req.body;
+
+  db.run(
+    `UPDATE pacientes SET nombre=?, cedula=?, telefono=?, medico=?, especialidad=?, numero_orden=? WHERE id=?`,
+    [nombre, cedula, telefono, medico, especialidad, numero_orden, id],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'Error al actualizar paciente' });
+      res.json({ message: 'Paciente actualizado correctamente' });
+    }
+  );
+});
+
+// 🗑️ Eliminar paciente
+app.delete('/pacientes/:id', authMiddleware, (req, res) => {
+  const { id } = req.params;
+
+  db.run(`DELETE FROM pacientes WHERE id = ?`, id, function (err) {
+    if (err) return res.status(500).json({ error: 'Error al eliminar paciente' });
+    res.json({ message: 'Paciente eliminado correctamente' });
+  });
+});
+
+// Iniciar servidor
 app.listen(PORT, () => console.log(`Backend corriendo en http://localhost:${PORT}`));
